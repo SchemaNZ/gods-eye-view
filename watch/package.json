@@ -1,0 +1,42 @@
+{
+  "name": "gods-eye-blackout-watch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GOD'S EYE // BLACKOUT WATCH — global electronic system malfunction overlay with time-scrubbing globe + flat-map views",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start",
+    "export:data": "bun scripts/export-events.ts"
+  },
+  "dependencies": {
+    "@radix-ui/react-toast": "^1.2.14",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "d3-geo": "^3.1.1",
+    "lucide-react": "^0.525.0",
+    "next": "^16.1.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-globe.gl": "^2.38.0",
+    "tailwind-merge": "^3.3.1",
+    "three": "^0.187.0",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/d3-geo": "^3.1.1",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/three": "^0.187.0",
+    "@types/topojson-client": "^3.1.5",
+    "tailwindcss": "^4",
+    "tw-animate-css": "^1.3.5",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}

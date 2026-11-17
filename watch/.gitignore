@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# next.js build output
+.next/
+out/
+
+# logs
+*.log
+dev.log
+server.log
+
+# env files (none are required to run this app)
+.env
+.env*.local
+
+# misc
+.DS_Store
+.vercel
+*.tsbuildinfo
+next-env.d.ts
