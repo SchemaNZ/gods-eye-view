@@ -8,6 +8,19 @@ Companion spec: *God's Eye — Live Event Ingestion Agent, Spec v0.1* (Claude pr
 
 ## 2026-11-17
 
+### D9 — Microsoft EX1550543 rebuilt as a country-by-country trail
+
+- **Data:** `watch/data/incidents/ms-ex1550543.json` holds 33 status points, 75 observations and 20 knock-on impacts, each with its source. Its generated module is `watch/src/lib/incidents/ms-ex1550543.ts`; regenerate with `python3 watch/scripts/gen_ms_incident.py`.
+- **Map layer:** "MS 365 outage trail (12–13 Nov)", which has its own filter toggle. It plots 85 markers at country or region centroids, plus Microsoft status posts pinned at Redmond.
+- **Not mapped:** 43 items. Most are Downdetector snapshots where no outlet said which country they covered. They stay in the JSON.
+- **Sources:** news outlets quoting Microsoft and Downdetector. Microsoft's own admin-center history needs a login and couldn't be read, and Downdetector is blocked. GDELT news-volume data waits for the Worker backfill.
+- **Corrections to the handoff dataset:**
+  - "7.4M Downdetector reports" is unverified; it appears only on an inaccessible Ookla page.
+  - "90+ countries" is not supported; sources say 74 countries and territories.
+  - "450M seats" is Microsoft's installed base, not the number of seats affected.
+  - The IndiGo / Air India claims were removed. The matching reports were from the July 2024 CrowdStrike outage.
+
+
 ### D1 — One repo: everything lives in the `SchemaNZ/gods-eye-view` fork
 
 - **Decision (Nathan):** all God's Eye live-layer work goes in this fork, not a separate repo.

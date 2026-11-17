@@ -5,6 +5,8 @@
 // placed at 12:00 UTC of that day purely for scrubber positioning — the UI
 // displays these as date-level precision. No events are invented.
 
+import { MS_EX1550543_EVENTS } from "./incidents/ms-ex1550543";
+
 export type Category =
   | "coldchain"
   | "finance"
@@ -14,7 +16,8 @@ export type Category =
   | "satellite"
   | "ai"
   | "advisory"
-  | "rumor";
+  | "rumor"
+  | "mstrail";
 
 export type Severity = "critical" | "major" | "moderate" | "minor" | "info";
 
@@ -57,6 +60,7 @@ export const CATEGORY_META: Record<
   ai: { label: "AI Platforms", color: "#58e06b", short: "AI" },
   advisory: { label: "Gov Advisory", color: "#f2f2f2", short: "ADV" },
   rumor: { label: "Rumor / Unverified", color: "#8e8e93", short: "RUM" },
+  mstrail: { label: "MS 365 outage trail (12–13 Nov)", color: "#3aa0ff", short: "MS" },
 };
 
 export const SEVERITY_META: Record<Severity, { label: string; rank: number }> = {
@@ -71,7 +75,7 @@ export const WINDOW_START = "2026-10-11T00:00:00Z";
 export const WINDOW_END = "2026-11-17T06:00:00Z";
 export const DATA_CUTOFF = "2026-11-17T04:00:00Z";
 
-export const EVENTS: GEEvent[] = [
+const BASE_EVENTS: GEEvent[] = [
   {
     id: "wave1-france",
     title: "France: 500+ supermarket refrigeration systems forced into defrost",
@@ -408,7 +412,7 @@ export const EVENTS: GEEvent[] = [
   },
   {
     id: "ms365-global",
-    title: "Microsoft 365 global outage — largest of 2026; 7.4M Downdetector reports",
+    title: "Microsoft 365 global outage — Outlook peak ~130k Downdetector reports",
     category: "cloud",
     severity: "critical",
     attackStatus: "none",
@@ -417,9 +421,9 @@ export const EVENTS: GEEvent[] = [
     duration: "~20 hours of elevated reports; restoration into Nov 13",
     location: { lat: 47.642, lng: -122.139, label: "Redmond, US (worldwide impact)" },
     summary:
-      "Outage reports surged worldwide from about 17:30 UTC on 12 November as Outlook went down and Teams, Copilot and other M365 apps were disrupted. Downdetector logged more than 7.4 million reports — the largest outage of the past 12 months and the largest of 2026 — peaking near 20,000 reports/minute, ~1,500x normal, and staying high for ~20 hours. 90+ countries logged at least 1,000 reports.",
+      "Outage reports surged worldwide from about 17:30 UTC on 12 November as Outlook went down and Teams, Copilot and other M365 apps were disrupted. Outlook reports peaked around 130,000 on Downdetector, with a peak rate near 20,000 reports/minute across five services. Reports came from 74 countries and territories within the first hour. (A '7.4M total reports, 90+ countries' figure traces only to an Ookla page we could not access — unverified.) See the MS 365 outage trail layer for the country-by-country spread.",
     impact:
-      "UK hospitals rescheduled procedures; courts warned judgments might be delayed; UK police could not receive online crime reports; National Pharmacy Association warned of prescription delays; US House alerted staff; Japan's Digital Agency could not receive email; Immigration NZ paused visa processing; European bond repurchase halted; IndiGo and Air India rerouted email; Workhorse delayed its earnings call. Estimated insured losses $300–500M (Morningstar DBRS).",
+      "UK hospitals rescheduled procedures; courts warned judgments might be delayed; UK police could not receive online crime reports; National Pharmacy Association warned of prescription delays; US House alerted staff; Japan's Digital Agency could not receive email; Immigration NZ paused visa processing; European bond repurchase halted; Workhorse delayed its earnings call. Estimated insured losses $300–500M (Morningstar DBRS, not re-verified). Airline claims removed on review: matching reports were from the July 2024 CrowdStrike outage.",
     cause:
       "Microsoft: a process that sets up secure connections on email servers became overwhelmed; the company began reversing a recent network settings change that coincided with the start of the outage. Microsoft found no evidence of a cyberattack. Incidents EX1550543 / MO1550821.",
     group: "nov-cluster",
@@ -532,7 +536,7 @@ export const PATTERNS: PatternFinding[] = [
   {
     tag: "CASCADE",
     title: "Single-zone failures cascade into sectors",
-    body: "One Google Cloud London zone (a faulty PLC prevented generators from starting after UPS drain) took down UK banking apps (Lloyds, HSBC, Barclays, NatWest, Revolut), Royal Mail and DPD two days later. One Microsoft network-settings change stalled email for 450M+ commercial seats across 90+ countries.",
+    body: "One Google Cloud London zone (a faulty PLC prevented generators from starting after UPS drain) took down UK banking apps (Lloyds, HSBC, Barclays, NatWest, Revolut), Royal Mail and DPD two days later. One Microsoft network change knocked out email and Teams for users of a platform with ~450M paid commercial seats, with reports from 74 countries and territories.",
   },
   {
     tag: "LEGACY",
@@ -545,3 +549,6 @@ export const PATTERNS: PatternFinding[] = [
     body: "Microsoft (no evidence of cyberattack), Shinkin (equipment malfunction), GCP London (power), UK banking apps (cascade), Chase ('technical issue, not cyber related'). Meanwhile the viral 'Nov 17 bank-wipe cyberattack' has no evidence at all — flagged here as a rumor so real events aren't confused with it.",
   },
 ];
+
+// Base curated events plus the per-country observation trail of Microsoft EX1550543.
+export const EVENTS: GEEvent[] = [...BASE_EVENTS, ...MS_EX1550543_EVENTS];
