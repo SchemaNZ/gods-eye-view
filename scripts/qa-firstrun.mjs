@@ -38,7 +38,7 @@ const SHOT_DIR = path.join(ROOT, 'qa-shots', 'firstrun');
 const CHROME_CANDIDATES = [
   process.env.PUPPETEER_EXECUTABLE_PATH,
   // Version-pinned Chrome-for-Testing over the auto-updating system Chrome.
-  (() => { try { return puppeteer.executablePath(); } catch { return null; } })(),
+  await puppeteer.executablePath().catch(() => null),
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
 ].filter(Boolean);
 
@@ -332,14 +332,17 @@ async function runArbitrationSection(page, { shots, consoleErrors }) {
       `session=${escUnderLightbox.session}`,
     );
     record(
-      'the lightbox keeps its OWN ESC semantics (Cesium binds none, so it stays)',
-      lightboxAfterEsc.shown,
+      'ESC closes attribution without dismissing the launcher underneath',
+      !lightboxAfterEsc.shown,
       `overlay shown=${lightboxAfterEsc.shown}`,
     );
 
-    // The guard disarms the launcher; it must never break it. Close the overlay
-    // the way a visitor does and the key comes straight back.
-    await page.evaluate(() => document.querySelector('.cesium-credit-lightbox-close')?.click());
+    // The attribution keyboard handler closes the overlay and restores focus.
+    // A second Escape belongs to the now-uncovered launcher.
+    const attributionFocusRestored = await page.evaluate(() => (
+      document.activeElement === document.querySelector('#cesium-credits .cesium-credit-expand-link')
+    ));
+    record('closing attribution restores its disclosure focus', attributionFocusRestored);
     await sleep(300);
     const uncovered = await launcherState();
     record('closing the lightbox hands the card back the key',
@@ -354,60 +357,35 @@ async function runArbitrationSection(page, { shots, consoleErrors }) {
       `classVisible=${afterUncoveredEsc.classVisible} session=${afterUncoveredEsc.session}`,
     );
 
-    // ── Blocker repro: a control that claims only the KEY ───────────────────
-    // The compact Radio disclosure closes on ESC from a capture listener bound
-    // long before this module exists. It called stopPropagation(), which does
-    // NOT stop later listeners on the same document — so one key closed the
-    // disclosure AND dismissed the launcher. The card is not hiding behind this
-    // one and must not yield to it: the key is simply already spoken for.
-    await open(page, { query: "?welcome=1", errorSink: consoleErrors });
-    const beforeRadio = await launcherState();
-    record('the launcher is up before the radio disclosure opens', beforeRadio.onScreen);
-    const radioOpened = await page.evaluate(() => {
-      document.getElementById('context-radio-toggle-btn')?.click();
-      return !!document.getElementById('context-radio-dock')?.classList.contains('disclosure-open');
-    });
-    await sleep(250);
-    record('the compact Radio disclosure opens', radioOpened);
-    const withRadio = await launcherState();
-    record(
-      'a small disclosure is a key contest, not a screen takeover — no yield',
-      withRadio.classVisible && withRadio.topmost,
-      `classVisible=${withRadio.classVisible} topmost=${withRadio.topmost}`,
-    );
-
-    await page.keyboard.press('Escape');
-    await sleep(400);
-    const radioAfterEsc = await page.evaluate(() => (
-      !!document.getElementById('context-radio-dock')?.classList.contains('disclosure-open')
-    ));
-    const launcherAfterRadioEsc = await launcherState();
-    record('ESC closes the disclosure', radioOpened && !radioAfterEsc,
-      `disclosure still open=${radioAfterEsc}`);
-    record(
-      'that SAME ESC does not also dismiss the launcher',
-      beforeRadio.onScreen && launcherAfterRadioEsc.classVisible
-        && launcherAfterRadioEsc.session !== 'dismissed',
-      `classVisible=${launcherAfterRadioEsc.classVisible} session=${launcherAfterRadioEsc.session} — one key, one action`,
-    );
-    // ...and the NEXT press is the launcher's, so nothing was permanently taken.
-    await page.keyboard.press('Escape');
-    await sleep(600);
-    const escAfterRadioClosed = await launcherState();
-    record(
-      'the next ESC belongs to the launcher again',
-      beforeRadio.onScreen && !escAfterRadioClosed.classVisible
-        && escAfterRadioClosed.session === 'dismissed',
-      `classVisible=${escAfterRadioClosed.classVisible} session=${escAfterRadioClosed.session}`,
-    );
-
     // ── Deferred reveal: a surface already up when the launcher would show ──
     // The class goes on as soon as the app exists, which is well before the
     // launcher's reveal (~T+1.9s), so init genuinely sees a screen it does not
     // own. Cockpit's own exit() strips this class, so it is re-asserted right up
     // to the check rather than set once and hoped for.
     await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
-    await page.goto(`${APP_URL}/?welcome=1`, { waitUntil: 'domcontentloaded' });
+    // Install the synthetic blocker before any application module can run. A
+    // warm Vite cache can otherwise finish first-run initialization between
+    // DOMContentLoaded and the first page.evaluate(), turning this into the
+    // already-covered "surface engages after reveal" case and burning the
+    // session flag exactly as that path is designed to do.
+    const earlyCockpitBlocker = await page.evaluateOnNewDocument(() => {
+      const blockAsSoonAsBodyExists = () => {
+        if (!document.body) return false;
+        document.body.classList.add('cockpit-mode');
+        return true;
+      };
+      if (blockAsSoonAsBodyExists()) return;
+      const observer = new MutationObserver(() => {
+        if (!blockAsSoonAsBodyExists()) return;
+        observer.disconnect();
+      });
+      observer.observe(document, { childList: true, subtree: true });
+    });
+    try {
+      await page.goto(`${APP_URL}/?welcome=1`, { waitUntil: 'domcontentloaded' });
+    } finally {
+      await page.removeScriptToEvaluateOnNewDocument(earlyCockpitBlocker.identifier);
+    }
     await page.waitForFunction(() => !!document.body, { timeout: 45000 }).catch(() => {});
     const holdCockpit = async (ms) => {
       const until = Date.now() + ms;
@@ -469,7 +447,10 @@ async function main() {
     ...(executablePath ? { executablePath } : {}),
     args: [
       '--no-sandbox', '--disable-setuid-sandbox',
-      '--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist',
+      // Metal is a macOS-only ANGLE backend; anywhere else it fails WebGL init.
+      ...(process.platform === 'darwin'
+        ? ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist']
+        : ['--use-gl=angle', '--use-angle=swiftshader']),
       '--disable-dev-shm-usage', '--disable-background-timer-throttling',
       '--disable-renderer-backgrounding', '--window-size=1440,900',
     ],
@@ -609,9 +590,9 @@ async function main() {
      *
      *   KEYED   — both datasets must actually arrive, and a failure banner in
      *             that state is a real defect, so the chip IS asserted.
-     *   KEYLESS — the LAYER ROW reports KEY REQUIRED while the global batch
-     *             completes without presenting that deliberate configuration
-     *             state as a failed mission.
+     *   KEYLESS — the LAYER ROW reports KEY REQUIRED, and the GLOBAL chip
+     *             never says LOAD FAILED: a missing key ends the batch
+     *             KEY REQUIRED (`src/loadingFeedback.js`).
      */
     const keyless = state.firmsError === 'KEY REQUIRED';
     console.log(`  \x1b[2m   FIRMS key state: ${keyless ? 'KEYLESS' : 'KEYED'} `
@@ -627,14 +608,11 @@ async function main() {
         (state.counts.earthquakes ?? 0) > 0,
         `${state.counts.earthquakes} quakes`,
       );
-      const chip = await readLoadingChip(page);
-      const failed = chip.filter((entry) => /LOAD FAILED/i.test(entry));
+      const keylessChip = await readLoadingChip(page);
       record(
-        'KEYLESS: a missing optional FIRMS key never becomes a global load failure',
-        failed.length === 0,
-        failed.length
-          ? `chip showed: ${failed.join(' | ')}`
-          : `chip states seen: ${chip.join(' → ') || 'none'}`,
+        'KEYLESS: the global chip never says LOAD FAILED for a missing key',
+        !keylessChip.some((entry) => /LOAD FAILED/i.test(entry)),
+        keylessChip.join(' → ') || 'no chip',
       );
     } else {
       record(

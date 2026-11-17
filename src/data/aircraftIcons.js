@@ -18,7 +18,7 @@
  * white / cyan-tracked / amber-military, plus .withAlpha fades) keeps working —
  * no per-glyph hardcoded colors that would fight the tint.
  *
- * MIXED-SET UPDATE (2026-08-15, selected asset set): airliner/widebody/
+ * MIXED-SET UPDATE (2026-08-15, owner Hangar picks): airliner/widebody/
  * turboprop/helicopter use the "refined" recognition-chart redraw;
  * quadjet/glider use the "bold" chart-symbol redraw; light/fastjet keep the
  * original drawings. Raster fidelity doubled (192px source, same 96 coords).
@@ -35,9 +35,11 @@ const VIEW = 96;
 const C = VIEW / 2; // 48 — glyph centre
 
 // Hairline dark edge (scaled for the 96 box: ~1.5u ≈ the old 0.5u at 32).
-const STROKE = 'stroke="rgba(0,0,0,0.32)" stroke-width="1.4" stroke-linejoin="round"';
+const STROKE =
+  'stroke="rgba(0,0,0,0.32)" stroke-width="1.4" stroke-linejoin="round"';
 // Heavier edge for the chart-symbol ("bold") glyphs adopted 2026-08-15.
-const STROKE_BOLD = 'stroke="rgba(0,0,0,0.38)" stroke-width="2" stroke-linejoin="round"';
+const STROKE_BOLD =
+  'stroke="rgba(0,0,0,0.38)" stroke-width="2" stroke-linejoin="round"';
 // Softer white for translucent detail (prop discs, rotor disc) — still white so
 // the tint multiplies cleanly; only the alpha differs.
 const DISC = 'fill="white" fill-opacity="0.5"';
@@ -158,8 +160,8 @@ const BODIES = {
              L -3,31 L -8,34 L -8,30 L -6,16
              L -27,26 L -27,20 L -5,-8
              C -4.6,-16 -4,-24 -3.5,-30 Z" fill="white" ${STROKE}/>`,
-  // 2026-08-15 Hangar additions: two NEW classes shipped with the real-model
-  // fleet (CLASS_MODEL_REAL). Same contract as the set above: 96×96 nose-up,
+  // 2026-08-15 additions: two NEW classes (bizjet, uav). Same contract as
+  // the set above: 96×96 nose-up,
   // white fill, hairline stroke, tint-safe.
   // Business jet — slender fuselage, modest swept wing, aft engines, T-tail.
   bizjet: `
@@ -239,7 +241,9 @@ const BODIES = {
 const _iconCache = new Map();
 
 const _b64 = (s) =>
-  typeof btoa === 'function' ? btoa(s) : Buffer.from(s, 'utf8').toString('base64');
+  typeof btoa === 'function'
+    ? btoa(s)
+    : Buffer.from(s, 'utf8').toString('base64');
 
 /** Fleet raster: billboards render at ~40–58 DEVICE px (width 20–24 CSS ×
  *  Retina × class scale). Cesium's billboard atlas has no mipmaps, so a big
@@ -248,6 +252,8 @@ const _b64 = (s) =>
  *  NEAR the display size lets the browser's SVG AA do the work: crisp AND
  *  smooth. 64 covers the 40–58 px fleet band with ≤1.6× minification. */
 const FLEET_RASTER_PX = 64;
+/** Raster size of the default fleet glyph. */
+export const FLEET_ICON_PX = FLEET_RASTER_PX;
 /** Tracked raster: the tracked billboard is the one SUSTAINED large 2D glyph
  *  (close-zoom fleet flybys hand off to 3D models). Keep the 192 px texture so
  *  it stays crisp at its biggest on-screen sizes. */
